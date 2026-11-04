@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Muszjr 的个人主页" />
+  <title>Muszjr · 个人主页</title>
+
+  <style>
+    :root {
+      --ink: #17181c;
+      --ink-soft: #5f6572;
+      --line: #ececf1;
+      --accent: #4f6ef7;
+      --accent-2: #8b5cf6;
+      --radius: 28px;
+      --shadow: 0 24px 70px rgba(24, 30, 55, 0.10),
+                0 2px 10px rgba(24, 30, 55, 0.04);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html {
+      -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+      min-height: 100svh;
+      display: grid;
+      place-items: center;
+      padding: 32px 20px;
+      background: #ffffff;
+      color: var(--ink);
+      font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+                   "Noto Sans SC", system-ui, -apple-system, BlinkMacSystemFont,
+                   "Segoe UI", sans-serif;
+      line-height: 1.7;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    /* 背景柔光，保持整体白底 */
+    body::before,
+    body::after {
+      content: "";
+      position: fixed;
+      z-index: 0;
+      border-radius: 50%;
+      pointer-events: none;
+      filter: blur(10px);
+    }
+
+    body::before {
+      width: 460px;
+      height: 460px;
+      top: -190px;
+      right: -120px;
+      background: radial-gradient(circle, rgba(79, 110, 247, 0.10), transparent 68%);
+    }
+
+    body::after {
+      width: 420px;
+      height: 420px;
+      bottom: -180px;
+      left: -130px;
+      background: radial-gradient(circle, rgba(139, 92, 246, 0.09), transparent 68%);
+    }
+
+    .page {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 660px;
+      animation: rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    .card {
+      position: relative;
+      overflow: hidden;
+      padding: 56px 48px 40px;
+      text-align: center;
+      background: rgba(255, 255, 255, 0.92);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    /* 卡片顶部的一缕彩色细线 */
+    .card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 50%;
+      width: 180px;
+      height: 3px;
+      border-radius: 0 0 999px 999px;
+      transform: translateX(-50%);
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      opacity: 0.9;
+    }
+
+    .avatar {
+      position: relative;
+      width: 96px;
+      height: 96px;
+      margin: 0 auto 26px;
+      display: grid;
+      place-items: center;
+      border-radius: 34px;
+      color: #ffffff;
+      font-size: 42px;
+      font-weight: 700;
+      letter-spacing: -1px;
+      background:
+        linear-gradient(145deg, #6d8bff 0%, #4f6ef7 48%, #8b5cf6 100%);
+      box-shadow:
+        0 14px 30px rgba(79, 110, 247, 0.30),
+        inset 0 1px 0 rgba(255, 255, 255, 0.35);
+      user-select: none;
+    }
+
+    .avatar::after {
+      content: "";
+      position: absolute;
+      width: 108px;
+      height: 108px;
+      border-radius: 40px;
+      border: 1px solid rgba(79, 110, 247, 0.16);
+      animation: breathe 4.5s ease-in-out infinite;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 18px;
+      padding: 6px 14px;
+      border: 1px solid #e8ebf5;
+      border-radius: 999px;
+      background: #f8f9ff;
+      color: var(--ink-soft);
+      font-size: 13px;
+      letter-spacing: 0.02em;
+    }
+
+    .status-dot {
+      position: relative;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #35c48b;
+    }
+
+    .status-dot::after {
+      content: "";
+      position: absolute;
+      inset: -3px;
+      border-radius: inherit;
+      border: 1px solid rgba(53, 196, 139, 0.45);
+      animation: pulse 2.2s ease-out infinite;
+    }
+
+    h1 {
+      font-size: clamp(30px, 6vw, 44px);
+      font-weight: 700;
+      line-height: 1.25;
+      letter-spacing: -0.035em;
+    }
+
+    .gradient-text {
+      background: linear-gradient(100deg, var(--accent) 10%, var(--accent-2) 90%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .intro {
+      max-width: 470px;
+      margin: 20px auto 0;
+      color: var(--ink-soft);
+      font-size: 16px;
+      line-height: 1.9;
+    }
+
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 28px;
+    }
+
+    .tag {
+      padding: 7px 14px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fbfbfd;
+      color: #4a5060;
+      font-size: 13px;
+      transition: transform 0.25s ease, border-color 0.25s ease,
+                  color 0.25s ease, background 0.25s ease;
+    }
+
+    .tag:hover {
+      transform: translateY(-2px);
+      border-color: rgba(79, 110, 247, 0.35);
+      background: #f5f7ff;
+      color: var(--accent);
+    }
+
+    .divider {
+      height: 1px;
+      margin: 34px auto 24px;
+      border: 0;
+      background: linear-gradient(90deg, transparent, var(--line), transparent);
+    }
+
+    .footer {
+      color: #9aa0ae;
+      font-size: 13px;
+      letter-spacing: 0.06em;
+    }
+
+    @keyframes rise {
+      from {
+        opacity: 0;
+        transform: translateY(16px) scale(0.985);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    @keyframes breathe {
+      0%, 100% {
+        transform: scale(0.96);
+        opacity: 0.35;
+      }
+      50% {
+        transform: scale(1.05);
+        opacity: 0.8;
+      }
+    }
+
+    @keyframes pulse {
+      0% {
+        transform: scale(0.7);
+        opacity: 0.9;
+      }
+      80%, 100% {
+        transform: scale(1.8);
+        opacity: 0;
+      }
+    }
+
+    @media (max-width: 560px) {
+      body {
+        padding: 20px 14px;
+      }
+
+      .card {
+        padding: 44px 24px 32px;
+        border-radius: 24px;
+      }
+
+      .avatar {
+        width: 82px;
+        height: 82px;
+        margin-bottom: 22px;
+        border-radius: 28px;
+        font-size: 36px;
+      }
+
+      .avatar::after {
+        width: 94px;
+        height: 94px;
+        border-radius: 34px;
+      }
+
+      .intro {
+        font-size: 15px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <article class="card">
+      <div class="avatar" aria-hidden="true">M</div>
+
+      <div class="status">
+        <span class="status-dot" aria-hidden="true"></span>
+        正在认真生活，也在慢慢变好
+      </div>
+
+      <h1>你好，我是<span class="gradient-text">Muszjr</span></h1>
+
+      <p class="intro">
+        一名热爱网络技术与前端开发的普通人，喜欢把复杂的问题变简单，
+        也喜欢把简单的页面做漂亮。保持好奇，持续学习。
+      </p>
+
+      <div class="tags" aria-label="兴趣与方向">
+        <span class="tag">网络工程</span>
+        <span class="tag">前端开发</span>
+        <span class="tag">热爱折腾</span>
+        <span class="tag">终身学习</span>
+      </div>
+
+      <hr class="divider" />
+
+      <p class="footer">很高兴认识你 · 愿我们都在自己的节奏里闪闪发光</p>
+    </article>
+  </main>
+</body>
+</html>
