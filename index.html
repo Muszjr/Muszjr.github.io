@@ -58,6 +58,7 @@
       --visual-blue: linear-gradient(135deg, #dfe7ff 0%, #eef1ff 56%, #f8f1ff 100%);
       --visual-violet: linear-gradient(135deg, #eee2ff 0%, #f5eaff 52%, #fdf0f7 100%);
       --visual-teal: linear-gradient(135deg, #d9f5ec 0%, #e9f5ff 56%, #f5f1ff 100%);
+      --visual-rose: linear-gradient(135deg, #ffe2ea 0%, #fbeaf2 54%, #f6edff 100%);
       --shadow: 0 24px 70px rgba(23, 29, 52, 0.09), 0 2px 10px rgba(23, 29, 52, 0.035);
       --shadow-small: 0 4px 22px rgba(23, 29, 52, 0.055);
       --radius: 28px;
@@ -90,6 +91,7 @@
       --visual-blue: linear-gradient(135deg, #1a2340 0%, #1e1c37 58%, #241b37 100%);
       --visual-violet: linear-gradient(135deg, #281c3d 0%, #2c2145 54%, #361f3c 100%);
       --visual-teal: linear-gradient(135deg, #102d2a 0%, #142a38 56%, #20213b 100%);
+      --visual-rose: linear-gradient(135deg, #351d2b 0%, #301e32 54%, #241c37 100%);
       --shadow: 0 26px 80px rgba(0, 0, 0, 0.46), 0 2px 12px rgba(0, 0, 0, 0.24);
       --shadow-small: 0 4px 24px rgba(0, 0, 0, 0.22);
     }
@@ -754,7 +756,7 @@
     /* ---------- 项目 ---------- */
     .project-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 20px;
     }
 
@@ -822,6 +824,10 @@
 
     .project-visual--teal {
       background: var(--visual-teal);
+    }
+
+    .project-visual--rose {
+      background: var(--visual-rose);
     }
 
     .project-index {
@@ -1351,7 +1357,7 @@
             </div>
             <div>
               <dt>最近在做</dt>
-              <dd>个人主页 2.0</dd>
+              <dd>个人主页 + 三个小项目</dd>
             </div>
             <div>
               <dt>长期目标</dt>
@@ -1410,20 +1416,29 @@
       {
         "index": "02",
         "title": "子网掩码计算器",
-        "description": "输入 IP 和掩码，实时计算网络地址、广播地址与可用主机范围，巩固网络基础。",
+        "description": "输入 IP 和前缀长度，实时计算网络地址、广播地址、可用主机范围，并用二进制视角理解网络位。",
         "tags": ["网络基础", "JavaScript"],
-        "status": "计划中",
+        "status": "已上线",
         "tone": "violet",
-        "note": "即将开工"
+        "link": "subnet.html"
       },
       {
         "index": "03",
         "title": "网络拓扑展示",
-        "description": "把拓扑数据渲染成可交互的节点与连线，让网络结构一眼就能看懂。",
+        "description": "可拖拽、可缩放、可点击查看详情的示例企业网络拓扑，把网络结构变成可交互的图。",
         "tags": ["网络工程", "数据可视化"],
-        "status": "计划中",
+        "status": "已上线",
         "tone": "teal",
-        "note": "构思中"
+        "link": "topology.html"
+      },
+      {
+        "index": "04",
+        "title": "登录页面",
+        "description": "带表单校验、密码显隐、回车提交和成功反馈的登录界面演示，重点练习交互细节。",
+        "tags": ["表单交互", "JavaScript"],
+        "status": "已上线",
+        "tone": "rose",
+        "link": "login.html"
       }
     ]
   </script>
@@ -1605,7 +1620,7 @@
       }
 
       function projectCard(project, index) {
-        var allowedTones = ["blue", "violet", "teal"];
+        var allowedTones = ["blue", "violet", "teal", "rose"];
         var tone = allowedTones.indexOf(project.tone) !== -1 ? project.tone : "blue";
         var statusClass = project.status === "已上线" ? "is-live" : "is-soon";
         var tags = Array.isArray(project.tags)
@@ -1613,9 +1628,15 @@
               return "<li>" + escapeHTML(tag) + "</li>";
             }).join("")
           : "";
-        var action = (typeof project.link === "string" && project.link.trim())
-          ? '<a class="project-link" href="' + escapeHTML(project.link.trim()) +
-            '" target="_blank" rel="noopener noreferrer">查看项目 <span aria-hidden="true">↗</span></a>'
+        var link = (typeof project.link === "string") ? project.link.trim() : "";
+        var isExternal = /^https?:\/\//i.test(link);
+        var linkAttributes = isExternal
+          ? ' target="_blank" rel="noopener noreferrer"'
+          : "";
+        var linkArrow = isExternal ? "↗" : "→";
+        var action = link
+          ? '<a class="project-link" href="' + escapeHTML(link) + '"' +
+            linkAttributes + '>查看项目 <span aria-hidden="true">' + linkArrow + "</span></a>"
           : '<span class="project-link is-muted">' + escapeHTML(project.note || "整理中") + "</span>";
 
         return '<article class="project-card reveal" aria-labelledby="project-title-' + index + '">' +
@@ -1662,6 +1683,16 @@
       if (year) {
         year.textContent = String(new Date().getFullYear());
       }
+
+      // 兜底：如果观察器因环境原因没有及时触发，至少让首屏内容显示出来。
+      window.setTimeout(function () {
+        document.querySelectorAll(".reveal:not(.is-visible)").forEach(function (item) {
+          var rect = item.getBoundingClientRect();
+          if (rect.top < window.innerHeight && rect.bottom > 0) {
+            item.classList.add("is-visible");
+          }
+        });
+      }, 1200);
     })();
   </script>
 </body>

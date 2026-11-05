@@ -1,0 +1,2022 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="一个可拖拽、可缩放、可查看节点详情的交互式企业网络拓扑图。" />
+  <meta name="theme-color" content="#ffffff" />
+  <meta name="color-scheme" content="light dark" />
+  <title>网络拓扑图展示 · Muszjr</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop stop-color='%234f6ef7'/%3E%3Cstop offset='1' stop-color='%238b5cf6'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='18' fill='url(%23g)'/%3E%3Ctext x='32' y='45' font-family='Arial,sans-serif' font-size='36' font-weight='700' fill='%23ffffff' text-anchor='middle'%3EM%3C/text%3E%3C/svg%3E" />
+
+  <script>
+    (function () {
+      document.documentElement.classList.add("js");
+      try {
+        var savedTheme = localStorage.getItem("theme");
+        if (savedTheme === "dark" || savedTheme === "light") {
+          document.documentElement.dataset.theme = savedTheme;
+        }
+      } catch (error) {}
+    })();
+  </script>
+
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #ffffff;
+      --surface: rgba(255, 255, 255, 0.84);
+      --surface-solid: #ffffff;
+      --surface-muted: #f6f7fb;
+      --canvas-bg: #fbfbfd;
+      --ink: #17191f;
+      --ink-soft: #626a7a;
+      --muted: #697182;
+      --line: rgba(23, 25, 31, 0.08);
+      --line-strong: rgba(23, 25, 31, 0.14);
+      --accent: #4562e5;
+      --accent-2: #7c3aed;
+      --accent-soft: rgba(69, 98, 229, 0.08);
+      --green: #20aa78;
+      --green-soft: rgba(32, 170, 120, 0.12);
+      --amber: #b7791f;
+      --amber-soft: rgba(183, 121, 31, 0.12);
+      --dot-color: rgba(23, 25, 31, 0.13);
+      --link-color: rgba(23, 25, 31, 0.20);
+      --node-shadow: rgba(23, 29, 52, 0.14);
+      --nav-bg: rgba(255, 255, 255, 0.78);
+      --glow-1: rgba(79, 110, 247, 0.10);
+      --glow-2: rgba(139, 92, 246, 0.09);
+      --grid-line: rgba(23, 25, 31, 0.045);
+      --shadow: 0 24px 70px rgba(23, 29, 52, 0.09), 0 2px 10px rgba(23, 29, 52, 0.035);
+      --shadow-small: 0 4px 22px rgba(23, 29, 52, 0.055);
+      --radius: 26px;
+    }
+
+    html[data-theme="dark"] {
+      color-scheme: dark;
+      --bg: #0b0d12;
+      --surface: rgba(22, 25, 35, 0.78);
+      --surface-solid: #151823;
+      --surface-muted: #1b1f2b;
+      --canvas-bg: #10131b;
+      --ink: #f2f4f9;
+      --ink-soft: #a9b0c1;
+      --muted: #7f8799;
+      --line: rgba(255, 255, 255, 0.08);
+      --line-strong: rgba(255, 255, 255, 0.15);
+      --accent: #8095ff;
+      --accent-2: #b18cff;
+      --accent-soft: rgba(128, 149, 255, 0.12);
+      --green: #45d3a1;
+      --green-soft: rgba(69, 211, 161, 0.12);
+      --amber: #f3c35c;
+      --amber-soft: rgba(243, 195, 92, 0.12);
+      --dot-color: rgba(255, 255, 255, 0.11);
+      --link-color: rgba(255, 255, 255, 0.20);
+      --node-shadow: rgba(0, 0, 0, 0.45);
+      --nav-bg: rgba(13, 16, 24, 0.80);
+      --glow-1: rgba(79, 110, 247, 0.16);
+      --glow-2: rgba(139, 92, 246, 0.13);
+      --grid-line: rgba(255, 255, 255, 0.035);
+      --shadow: 0 26px 80px rgba(0, 0, 0, 0.46), 0 2px 12px rgba(0, 0, 0, 0.24);
+      --shadow-small: 0 4px 24px rgba(0, 0, 0, 0.22);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+      min-height: 100svh;
+      overflow-x: hidden;
+      background:
+        radial-gradient(900px 520px at 12% -8%, var(--glow-1), transparent 65%),
+        radial-gradient(760px 480px at 92% 2%, var(--glow-2), transparent 62%),
+        var(--bg);
+      color: var(--ink);
+      font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+                   "Noto Sans SC", system-ui, -apple-system, BlinkMacSystemFont,
+                   "Segoe UI", sans-serif;
+      line-height: 1.7;
+      -webkit-font-smoothing: antialiased;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(var(--grid-line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+      background-size: 64px 64px;
+      -webkit-mask-image: radial-gradient(ellipse 75% 48% at 50% 0%, #000 0%, transparent 78%);
+      mask-image: radial-gradient(ellipse 75% 48% at 50% 0%, #000 0%, transparent 78%);
+    }
+
+    ::selection {
+      background: var(--accent);
+      color: #ffffff;
+    }
+
+    a {
+      color: inherit;
+    }
+
+    :focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 3px;
+    }
+
+    .skip-link {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      z-index: 999;
+      padding: 10px 16px;
+      border-radius: 10px;
+      background: var(--ink);
+      color: var(--bg);
+      font-size: 14px;
+      text-decoration: none;
+      transform: translateY(-150%);
+      transition: transform 0.2s ease;
+    }
+
+    .skip-link:focus {
+      transform: translateY(0);
+    }
+
+    /* ---------- 顶栏 ---------- */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      padding: 14px 20px 0;
+    }
+
+    .topbar-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      width: 100%;
+      max-width: 1080px;
+      min-height: 58px;
+      margin: 0 auto;
+      padding: 8px 10px 8px 13px;
+      border: 1px solid var(--line);
+      border-radius: 17px;
+      background: var(--nav-bg);
+      box-shadow: 0 8px 30px rgba(23, 29, 52, 0.045);
+      backdrop-filter: blur(20px) saturate(160%);
+      -webkit-backdrop-filter: blur(20px) saturate(160%);
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      border-radius: 10px;
+      color: var(--ink);
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      text-decoration: none;
+    }
+
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      background: linear-gradient(145deg, #6d8bff 0%, #4f6ef7 48%, #8b5cf6 100%);
+      box-shadow: 0 6px 16px rgba(79, 110, 247, 0.25);
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: 700;
+      user-select: none;
+    }
+
+    .brand-dot {
+      color: var(--accent);
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .back-home {
+      padding: 7px 12px;
+      border-radius: 999px;
+      color: var(--ink-soft);
+      font-size: 13px;
+      text-decoration: none;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    .back-home:hover {
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+
+    .icon-btn {
+      display: grid;
+      place-items: center;
+      width: 36px;
+      height: 36px;
+      border: 1px solid transparent;
+      border-radius: 50%;
+      background: transparent;
+      color: var(--ink-soft);
+      cursor: pointer;
+      transition: background-color 0.2s ease, color 0.2s ease,
+                  border-color 0.2s ease;
+    }
+
+    .icon-btn:hover {
+      border-color: var(--line);
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+
+    .icon {
+      width: 17px;
+      height: 17px;
+    }
+
+    .icon-sun {
+      display: none;
+    }
+
+    html[data-theme="dark"] .icon-sun {
+      display: block;
+    }
+
+    html[data-theme="dark"] .icon-moon {
+      display: none;
+    }
+
+    /* ---------- 页面 ---------- */
+    .page {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 54px 20px 0;
+    }
+
+    .hero {
+      max-width: 850px;
+      animation: rise 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    .crumb {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 14px;
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-decoration: none;
+      text-transform: uppercase;
+    }
+
+    .crumb:hover {
+      text-decoration: underline;
+      text-underline-offset: 4px;
+    }
+
+    h1 {
+      font-size: clamp(34px, 5.6vw, 54px);
+      font-weight: 700;
+      letter-spacing: -0.045em;
+      line-height: 1.2;
+    }
+
+    .lead {
+      max-width: 690px;
+      margin-top: 16px;
+      color: var(--ink-soft);
+      font-size: 15.5px;
+      line-height: 1.9;
+    }
+
+    .pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 22px;
+    }
+
+    .pill {
+      padding: 5px 11px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--surface-muted);
+      color: var(--ink-soft);
+      font-size: 12px;
+    }
+
+    /* ---------- 拓扑布局 ---------- */
+    .topology-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 326px;
+      gap: 20px;
+      align-items: start;
+      margin-top: 34px;
+    }
+
+    .stage {
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow-small);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      transition: background-color 0.3s ease, border-color 0.3s ease,
+                  box-shadow 0.3s ease;
+    }
+
+    .stage-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 14px 17px;
+      border-bottom: 1px solid var(--line);
+      background: var(--surface);
+    }
+
+    .stage-title {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      min-width: 0;
+    }
+
+    .stage-title .live-dot {
+      flex: 0 0 auto;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 0 4px var(--green-soft);
+    }
+
+    .stage-title strong {
+      display: block;
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.4;
+    }
+
+    .stage-title span {
+      display: block;
+      margin-top: 1px;
+      color: var(--muted);
+      font-size: 10.5px;
+      line-height: 1.5;
+    }
+
+    .view-controls {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      flex: 0 0 auto;
+      padding: 3px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--surface-muted);
+    }
+
+    .view-btn {
+      display: grid;
+      place-items: center;
+      width: 29px;
+      height: 29px;
+      border: 0;
+      border-radius: 7px;
+      background: transparent;
+      color: var(--ink-soft);
+      font-size: 18px;
+      line-height: 1;
+      cursor: pointer;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    .view-btn:hover:not(:disabled) {
+      background: var(--surface-solid);
+      color: var(--accent);
+    }
+
+    .view-btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.35;
+    }
+
+    .zoom-level {
+      min-width: 40px;
+      color: var(--muted);
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 10px;
+      text-align: center;
+    }
+
+    .reset-view {
+      height: 29px;
+      padding: 0 8px;
+      border: 0;
+      border-left: 1px solid var(--line);
+      border-radius: 0 7px 7px 0;
+      background: transparent;
+      color: var(--ink-soft);
+      font-size: 10.5px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .reset-view:hover {
+      color: var(--accent);
+    }
+
+    .canvas-wrap {
+      position: relative;
+      overflow: auto;
+      background: var(--canvas-bg);
+      scrollbar-color: var(--line-strong) transparent;
+      scrollbar-width: thin;
+    }
+
+    .topology-svg {
+      display: block;
+      width: 100%;
+      height: auto;
+      min-height: 430px;
+      touch-action: auto;
+      user-select: none;
+      cursor: grab;
+    }
+
+    .topology-svg.is-panning {
+      cursor: grabbing;
+    }
+
+    .topology-svg text {
+      font-family: inherit;
+    }
+
+    .canvas-bg {
+      fill: var(--canvas-bg);
+    }
+
+    #dot-grid circle {
+      fill: var(--dot-color);
+    }
+
+    .link {
+      fill: none;
+      stroke: var(--link-color);
+      stroke-width: 1.7;
+      stroke-linecap: round;
+      vector-effect: non-scaling-stroke;
+      transition: stroke 0.2s ease, opacity 0.2s ease, stroke-width 0.2s ease;
+    }
+
+    .link--wan {
+      stroke: var(--amber);
+      stroke-dasharray: 6 5;
+    }
+
+    .link--trunk {
+      stroke: var(--accent);
+      opacity: 0.55;
+    }
+
+    .link--access {
+      stroke: var(--link-color);
+    }
+
+    .link.is-connected {
+      stroke: var(--accent);
+      stroke-width: 2.5;
+      opacity: 1;
+    }
+
+    .link-label {
+      fill: var(--muted);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      text-anchor: middle;
+      paint-order: stroke;
+      stroke: var(--canvas-bg);
+      stroke-width: 4px;
+      stroke-linejoin: round;
+      pointer-events: none;
+      transition: fill 0.2s ease;
+    }
+
+    .link-label.is-connected {
+      fill: var(--accent);
+    }
+
+    .node {
+      cursor: grab;
+      outline: none;
+      touch-action: none;
+    }
+
+    .node.is-dragging {
+      cursor: grabbing;
+    }
+
+    .node-halo {
+      fill: var(--surface-solid);
+      stroke: var(--line);
+      stroke-width: 1.2;
+      filter: drop-shadow(0 7px 10px var(--node-shadow));
+      transition: stroke 0.2s ease, stroke-width 0.2s ease,
+                  fill 0.3s ease;
+    }
+
+    .node:hover .node-halo {
+      stroke: var(--accent);
+    }
+
+    .node:focus-visible .node-halo {
+      stroke: var(--accent);
+      stroke-width: 3;
+    }
+
+    .node.is-selected .node-halo {
+      stroke: var(--accent);
+      stroke-width: 2.6;
+    }
+
+    .node.is-neighbor .node-halo {
+      stroke: var(--line-strong);
+      stroke-width: 2;
+    }
+
+    .node-core {
+      fill: var(--node-color, var(--accent));
+    }
+
+    .node-icon {
+      color: #ffffff;
+      pointer-events: none;
+    }
+
+    .node-status {
+      fill: var(--green);
+      stroke: var(--surface-solid);
+      stroke-width: 3px;
+      pointer-events: none;
+    }
+
+    .node-label {
+      fill: var(--ink);
+      font-size: 12.5px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      paint-order: stroke;
+      stroke: var(--canvas-bg);
+      stroke-width: 4px;
+      stroke-linejoin: round;
+      pointer-events: none;
+    }
+
+    .stage-footer {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 17px;
+      border-top: 1px solid var(--line);
+      background: var(--surface);
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 11px;
+      color: var(--muted);
+      font-size: 10.5px;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .legend-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+    }
+
+    .stage-note {
+      color: var(--muted);
+      font-size: 10.5px;
+    }
+
+    .mobile-hint {
+      display: none;
+      color: var(--muted);
+      font-size: 10.5px;
+    }
+
+    /* ---------- 详情 ---------- */
+    .detail-panel {
+      position: sticky;
+      top: 92px;
+      padding: 24px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow-small);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      transition: background-color 0.3s ease, border-color 0.3s ease,
+                  box-shadow 0.3s ease;
+    }
+
+    .detail-head {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .detail-icon {
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      width: 46px;
+      height: 46px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--surface-muted);
+      color: var(--type-color, var(--accent));
+    }
+
+    .detail-icon svg {
+      width: 23px;
+      height: 23px;
+    }
+
+    .detail-kicker {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      margin-bottom: 2px;
+    }
+
+    .detail-type {
+      color: var(--type-color, var(--accent));
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: var(--green-soft);
+      color: var(--green);
+      font-size: 9.5px;
+      font-weight: 600;
+    }
+
+    .status-pill::before {
+      content: "";
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .detail-panel h2 {
+      font-size: 21px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      line-height: 1.3;
+    }
+
+    .detail-desc {
+      margin-top: 16px;
+      color: var(--ink-soft);
+      font-size: 12.5px;
+      line-height: 1.85;
+    }
+
+    .detail-list {
+      display: grid;
+      margin-top: 18px;
+      border-top: 1px solid var(--line);
+    }
+
+    .detail-list > div {
+      display: grid;
+      grid-template-columns: 76px minmax(0, 1fr);
+      gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .detail-list > div:last-child {
+      border-bottom: 0;
+    }
+
+    .detail-list dt {
+      color: var(--muted);
+      font-size: 10.5px;
+      line-height: 1.7;
+    }
+
+    .detail-list dd {
+      color: var(--ink);
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 1.7;
+      word-break: break-word;
+    }
+
+    .connections {
+      margin-top: 18px;
+      padding-top: 16px;
+      border-top: 1px solid var(--line);
+    }
+
+    .connections h3 {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .connection-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 9px;
+    }
+
+    .connection-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 8px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: var(--surface-muted);
+      color: var(--ink-soft);
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 9.5px;
+      cursor: pointer;
+      transition: border-color 0.2s ease, color 0.2s ease,
+                  background-color 0.2s ease;
+    }
+
+    .connection-chip:hover {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+
+    .connection-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+    }
+
+    .panel-actions {
+      margin-top: 20px;
+    }
+
+    .secondary-btn {
+      width: 100%;
+      min-height: 38px;
+      border: 1px solid var(--line-strong);
+      border-radius: 9px;
+      background: var(--surface-solid);
+      color: var(--ink-soft);
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: border-color 0.2s ease, color 0.2s ease,
+                  background-color 0.2s ease;
+    }
+
+    .secondary-btn:hover {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+
+    .detail-hint {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1.65;
+      text-align: center;
+    }
+
+    /* ---------- 说明 ---------- */
+    .notes {
+      margin-top: 46px;
+    }
+
+    .section-heading {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 20px;
+    }
+
+    .eyebrow {
+      margin-bottom: 8px;
+      color: var(--accent);
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+
+    .section-heading h2 {
+      font-size: clamp(22px, 3vw, 28px);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+    }
+
+    .section-heading p {
+      max-width: 330px;
+      padding-bottom: 3px;
+      color: var(--ink-soft);
+      font-size: 12.5px;
+      line-height: 1.8;
+    }
+
+    .note-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .note-card {
+      padding: 20px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--surface);
+    }
+
+    .note-card span {
+      color: var(--accent);
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+    }
+
+    .note-card h3 {
+      margin-top: 8px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .note-card p {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 11.5px;
+      line-height: 1.8;
+    }
+
+    /* ---------- 页脚 ---------- */
+    .footer {
+      position: relative;
+      z-index: 1;
+      max-width: 1080px;
+      margin: 54px auto 0;
+      padding: 20px 20px 36px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 11.5px;
+    }
+
+    .footer-inner {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    .footer-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+    }
+
+    .footer a {
+      color: var(--ink-soft);
+      text-decoration: none;
+    }
+
+    .footer a:hover {
+      color: var(--accent);
+    }
+
+    @keyframes rise {
+      from {
+        opacity: 0;
+        transform: translateY(15px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @media (max-width: 900px) {
+      .topology-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .detail-panel {
+        position: static;
+      }
+
+      .note-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .topology-svg {
+        min-width: 780px;
+      }
+
+      .mobile-hint {
+        display: inline;
+      }
+
+      .detail-panel {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0 24px;
+      }
+
+      .detail-head,
+      .detail-desc,
+      .panel-actions,
+      .detail-hint {
+        grid-column: 1 / -1;
+      }
+
+      .detail-list {
+        grid-column: 1;
+      }
+
+      .connections {
+        grid-column: 2;
+        margin-top: 18px;
+        padding-top: 0;
+        border-top: 0;
+      }
+    }
+
+    @media (max-width: 700px) {
+      .topbar {
+        padding: 10px 12px 0;
+      }
+
+      .topbar-inner {
+        min-height: 54px;
+        border-radius: 15px;
+      }
+
+      .page {
+        padding: 36px 14px 0;
+      }
+
+      .lead {
+        font-size: 14.5px;
+      }
+
+      .topology-layout {
+        margin-top: 26px;
+      }
+
+      .stage-header {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .view-controls {
+        align-self: stretch;
+        justify-content: space-between;
+      }
+
+      .stage-footer {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 7px;
+      }
+
+      .detail-panel {
+        display: block;
+        padding: 20px;
+        border-radius: 22px;
+      }
+
+      .connections {
+        margin-top: 18px;
+        padding-top: 16px;
+        border-top: 1px solid var(--line);
+      }
+
+      .link-label {
+        display: none;
+      }
+
+      .section-heading {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .footer {
+        padding-right: 14px;
+        padding-left: 14px;
+      }
+
+      .footer-inner {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html {
+        scroll-behavior: auto;
+      }
+
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">跳到主要内容</a>
+
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="index.html" aria-label="返回 Muszjr 主页">
+        <span class="brand-mark" aria-hidden="true">M</span>
+        <span>Muszjr<span class="brand-dot">.</span></span>
+      </a>
+      <div class="top-actions">
+        <a class="back-home" href="index.html">← 返回主页</a>
+        <button class="icon-btn" id="theme-toggle" type="button"
+                aria-label="切换到深色模式" title="切换到深色模式">
+          <svg class="icon icon-moon" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="1.8"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
+          </svg>
+          <svg class="icon icon-sun" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="1.8"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="4" />
+            <path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="page" id="main">
+    <section class="hero" aria-labelledby="page-title">
+      <a class="crumb" href="index.html">Project 03 / Network Topology</a>
+      <h1 id="page-title">网络拓扑图展示</h1>
+      <p class="lead">
+        一张可以拖动、缩放和点击查看详情的示例企业网络拓扑。
+        从互联网出口、防火墙到核心与接入层，用交互方式理解每个节点在做什么。
+      </p>
+      <div class="pills" aria-label="交互特性">
+        <span class="pill">交互式 SVG</span>
+        <span class="pill">拖动节点</span>
+        <span class="pill">查看详情</span>
+        <span class="pill">示例数据</span>
+      </div>
+    </section>
+
+    <section class="topology-layout" aria-label="企业网络拓扑交互图">
+      <div class="stage">
+        <div class="stage-header">
+          <div class="stage-title">
+            <span class="live-dot" aria-hidden="true"></span>
+            <div>
+              <strong>示例企业网络</strong>
+              <span id="stage-meta">11 个节点 · 10 条链路</span>
+            </div>
+          </div>
+
+          <div class="view-controls" role="group" aria-label="视图控制">
+            <button class="view-btn" id="zoom-out" type="button"
+                    aria-label="缩小拓扑图" title="缩小" disabled>−</button>
+            <span class="zoom-level" id="zoom-level" aria-live="polite">100%</span>
+            <button class="view-btn" id="zoom-in" type="button"
+                    aria-label="放大拓扑图" title="放大">+</button>
+            <button class="reset-view" id="reset-view" type="button">复位视图</button>
+          </div>
+        </div>
+
+        <div class="canvas-wrap" id="canvas-wrap">
+          <svg class="topology-svg" id="topology-svg" viewBox="0 0 1000 720"
+               role="group" aria-label="交互式企业网络拓扑图，可点击节点查看详情">
+            <defs>
+              <pattern id="dot-grid" width="28" height="28" patternUnits="userSpaceOnUse">
+                <circle cx="1.5" cy="1.5" r="1.2" />
+              </pattern>
+
+              <symbol id="icon-internet" viewBox="0 0 24 24" fill="none"
+                      stroke="currentColor" stroke-width="1.8"
+                      stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M3 12h18" />
+                <path d="M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18" />
+              </symbol>
+
+              <symbol id="icon-firewall" viewBox="0 0 24 24" fill="none"
+                      stroke="currentColor" stroke-width="1.8"
+                      stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 3 4.8 6v5.4c0 4.5 3 7.8 7.2 9.6 4.2-1.8 7.2-5.1 7.2-9.6V6L12 3Z" />
+                <path d="m9.3 12 1.8 1.8 3.8-3.8" />
+              </symbol>
+
+              <symbol id="icon-switch" viewBox="0 0 24 24" fill="none"
+                      stroke="currentColor" stroke-width="1.8"
+                      stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="7" width="18" height="10" rx="2.5" />
+                <path d="M7 11h.01M11 11h.01M15 11h.01M7 14h.01M11 14h.01M15 14h.01" />
+              </symbol>
+
+              <symbol id="icon-server" viewBox="0 0 24 24" fill="none"
+                      stroke="currentColor" stroke-width="1.8"
+                      stroke-linecap="round" stroke-linejoin="round">
+                <rect x="4" y="4" width="16" height="7" rx="2" />
+                <rect x="4" y="13" width="16" height="7" rx="2" />
+                <path d="M8 7.5h.01M8 16.5h.01M12 7.5h4M12 16.5h4" />
+              </symbol>
+
+              <symbol id="icon-pc" viewBox="0 0 24 24" fill="none"
+                      stroke="currentColor" stroke-width="1.8"
+                      stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="12" rx="2" />
+                <path d="M8 20h8M12 16v4" />
+              </symbol>
+
+              <symbol id="icon-ap" viewBox="0 0 24 24" fill="none"
+                      stroke="currentColor" stroke-width="1.8"
+                      stroke-linecap="round" stroke-linejoin="round">
+                <path d="M5 9.5a10 10 0 0 1 14 0M8 12.5a6 6 0 0 1 8 0M11 15.5a2 2 0 0 1 2 0" />
+                <circle cx="12" cy="18.5" r="1" fill="currentColor" stroke="none" />
+              </symbol>
+            </defs>
+
+            <rect class="canvas-bg" width="1000" height="720" />
+            <rect width="1000" height="720" fill="url(#dot-grid)" aria-hidden="true" />
+
+            <g id="viewport">
+              <g id="link-layer" aria-hidden="true"></g>
+              <g id="link-label-layer" aria-hidden="true"></g>
+              <g id="node-layer"></g>
+            </g>
+          </svg>
+        </div>
+
+        <div class="stage-footer">
+          <div class="legend" id="legend" aria-label="节点类型图例"></div>
+          <span class="stage-note">拖动节点调整布局 · 点击节点查看详情</span>
+          <span class="mobile-hint">左右滑动查看完整拓扑</span>
+        </div>
+      </div>
+
+      <aside class="detail-panel" id="detail-panel"
+             aria-labelledby="detail-name" aria-live="polite">
+        <div class="detail-head">
+          <div class="detail-icon" id="detail-icon">
+            <svg aria-hidden="true"><use id="detail-icon-use" href="#icon-switch"></use></svg>
+          </div>
+          <div>
+            <div class="detail-kicker">
+              <span class="detail-type" id="detail-type">核心交换机</span>
+              <span class="status-pill" id="detail-status">在线</span>
+            </div>
+            <h2 id="detail-name">CORE-01</h2>
+          </div>
+        </div>
+
+        <p class="detail-desc" id="detail-desc">
+          企业网络的核心，承担三层转发与 VLAN 间路由。
+        </p>
+
+        <dl class="detail-list">
+          <div>
+            <dt>管理地址</dt>
+            <dd id="detail-ip">10.0.0.254</dd>
+          </div>
+          <div>
+            <dt>角色</dt>
+            <dd id="detail-role">核心层</dd>
+          </div>
+          <div>
+            <dt>VLAN</dt>
+            <dd id="detail-vlan">VLAN 10 / 20 / 30 / 100</dd>
+          </div>
+          <div>
+            <dt>上联</dt>
+            <dd id="detail-uplink">FW-01</dd>
+          </div>
+        </dl>
+
+        <div class="connections">
+          <h3>连接设备</h3>
+          <div class="connection-list" id="connection-list"></div>
+        </div>
+
+        <div class="panel-actions">
+          <button class="secondary-btn" id="reset-layout" type="button">恢复默认布局</button>
+        </div>
+        <p class="detail-hint">
+          拖动后的位置会保存在当前浏览器。拓扑为学习示例，并非真实监控数据。
+        </p>
+      </aside>
+    </section>
+
+    <section class="notes" aria-labelledby="notes-title">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Design notes</p>
+          <h2 id="notes-title">这不是一张静态图片</h2>
+        </div>
+        <p>节点、链路和详情都由 JavaScript 数据驱动，后续可以替换成你自己的网络结构。</p>
+      </div>
+      <div class="note-grid">
+        <article class="note-card">
+          <span>01 / INTERACTION</span>
+          <h3>拖动与缩放</h3>
+          <p>节点可以自由拖动，布局会保存在本机；放大后也能继续查看细节。</p>
+        </article>
+        <article class="note-card">
+          <span>02 / VLAN</span>
+          <h3>三层网络结构</h3>
+          <p>出口、边界、核心、接入和终端分层展示，VLAN 标签帮助理解流量路径。</p>
+        </article>
+        <article class="note-card">
+          <span>03 / DATA</span>
+          <h3>数据驱动</h3>
+          <p>节点与连接都来自 JavaScript 数组，改成真实设备清单就能复用这套视图。</p>
+        </article>
+      </div>
+    </section>
+
+    <noscript>
+      <p style="margin-top: 20px; color: #c23a3a;">启用 JavaScript 后才能渲染交互式拓扑图。</p>
+    </noscript>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <span>© <span id="year">2026</span> Muszjr · 网络拓扑图展示</span>
+      <div class="footer-links">
+        <a href="subnet.html">子网掩码计算器</a>
+        <a href="login.html">登录页面</a>
+        <a href="index.html">返回主页</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    (function () {
+      "use strict";
+
+      var SVG_NS = "http://www.w3.org/2000/svg";
+      var STORAGE_KEY = "muszjr-topology-layout-v1";
+      var MIN_ZOOM = 1;
+      var MAX_ZOOM = 1.75;
+      var ZOOM_STEP = 0.25;
+
+      var root = document.documentElement;
+      var themeToggle = document.getElementById("theme-toggle");
+      var themeMeta = document.querySelector('meta[name="theme-color"]');
+      var svg = document.getElementById("topology-svg");
+      var viewport = document.getElementById("viewport");
+      var linkLayer = document.getElementById("link-layer");
+      var linkLabelLayer = document.getElementById("link-label-layer");
+      var nodeLayer = document.getElementById("node-layer");
+      var canvasWrap = document.getElementById("canvas-wrap");
+      var zoomOutButton = document.getElementById("zoom-out");
+      var zoomInButton = document.getElementById("zoom-in");
+      var zoomLevel = document.getElementById("zoom-level");
+      var resetViewButton = document.getElementById("reset-view");
+      var resetLayoutButton = document.getElementById("reset-layout");
+      var legend = document.getElementById("legend");
+      var stageMeta = document.getElementById("stage-meta");
+      var detailName = document.getElementById("detail-name");
+      var detailType = document.getElementById("detail-type");
+      var detailDesc = document.getElementById("detail-desc");
+      var detailIp = document.getElementById("detail-ip");
+      var detailRole = document.getElementById("detail-role");
+      var detailVlan = document.getElementById("detail-vlan");
+      var detailUplink = document.getElementById("detail-uplink");
+      var detailIcon = document.getElementById("detail-icon");
+      var detailIconUse = document.getElementById("detail-icon-use");
+      var connectionList = document.getElementById("connection-list");
+
+      var TYPE_META = {
+        internet: { name: "互联网", color: "#4f7df3" },
+        firewall: { name: "防火墙", color: "#df5b62" },
+        switch: { name: "交换机", color: "#7357f6" },
+        server: { name: "服务器", color: "#0f9f86" },
+        pc: { name: "终端", color: "#64748b" },
+        ap: { name: "无线 AP", color: "#d38a1f" }
+      };
+
+      var NODES = [
+        {
+          id: "internet", label: "INTERNET", type: "internet",
+          x: 500, y: 65, ip: "—", role: "外部网络", vlan: "—", uplink: "ISP",
+          desc: "模拟互联网出口，作为企业网络的边界，连接外部网络与内部防火墙。"
+        },
+        {
+          id: "fw", label: "FW-01", type: "firewall",
+          x: 500, y: 175, ip: "10.0.0.1", role: "安全边界", vlan: "—", uplink: "INTERNET",
+          desc: "企业安全边界，负责 NAT、访问控制与安全策略，保护内部网络。"
+        },
+        {
+          id: "core", label: "CORE-01", type: "switch",
+          x: 500, y: 290, ip: "10.0.0.254", role: "核心层", vlan: "VLAN 10 / 20 / 30 / 100", uplink: "FW-01",
+          desc: "企业网络的核心，承担三层转发与 VLAN 间路由，是所有接入交换机的汇聚点。"
+        },
+        {
+          id: "sw1", label: "LSW-1F", type: "switch",
+          x: 240, y: 435, ip: "10.0.0.11", role: "接入层 · 1F", vlan: "VLAN 10 / 30", uplink: "CORE-01",
+          desc: "一楼接入交换机，连接办公终端与无线接入点，通过 Trunk 上联核心。"
+        },
+        {
+          id: "sw2", label: "LSW-2F", type: "switch",
+          x: 500, y: 435, ip: "10.0.0.12", role: "接入层 · 2F", vlan: "VLAN 20", uplink: "CORE-01",
+          desc: "二楼接入交换机，承载二楼办公终端的千兆接入与 VLAN 20 转发。"
+        },
+        {
+          id: "sw3", label: "LSW-3F", type: "switch",
+          x: 760, y: 435, ip: "10.0.0.13", role: "接入层 · 3F", vlan: "VLAN 20 / 100", uplink: "CORE-01",
+          desc: "三楼接入交换机，同时连接办公终端与服务器，承载业务与管理流量。"
+        },
+        {
+          id: "pc1", label: "PC-01", type: "pc",
+          x: 135, y: 610, ip: "192.168.10.101", role: "办公终端", vlan: "VLAN 10", uplink: "LSW-1F",
+          desc: "一楼办公终端，属于 VLAN 10，通过接入交换机访问内部资源。"
+        },
+        {
+          id: "ap", label: "AP-01", type: "ap",
+          x: 315, y: 610, ip: "192.168.30.11", role: "无线接入点", vlan: "VLAN 30", uplink: "LSW-1F",
+          desc: "无线接入点，为移动设备提供 Wi-Fi 接入，无线客户端使用 VLAN 30。"
+        },
+        {
+          id: "pc2", label: "PC-02", type: "pc",
+          x: 500, y: 610, ip: "192.168.20.101", role: "办公终端", vlan: "VLAN 20", uplink: "LSW-2F",
+          desc: "二楼办公终端，属于 VLAN 20，通过核心交换机进行跨 VLAN 访问。"
+        },
+        {
+          id: "pc3", label: "PC-03", type: "pc",
+          x: 665, y: 610, ip: "192.168.20.102", role: "办公终端", vlan: "VLAN 20", uplink: "LSW-3F",
+          desc: "三楼办公终端，通过 LSW-3F 接入网络，使用 VLAN 20 办公网段。"
+        },
+        {
+          id: "srv", label: "SERVER-01", type: "server",
+          x: 855, y: 610, ip: "192.168.100.10", role: "服务器", vlan: "VLAN 100", uplink: "LSW-3F",
+          desc: "内部业务服务器，部署在独立 VLAN 100 中，由核心交换机统一控制访问策略。"
+        }
+      ];
+
+      var LINKS = [
+        { from: "internet", to: "fw", label: "WAN", kind: "wan", labelDx: 44, labelDy: -18 },
+        { from: "fw", to: "core", label: "Trust", kind: "trunk", labelDx: 44, labelDy: -18 },
+        { from: "core", to: "sw1", label: "Trunk", kind: "trunk" },
+        { from: "core", to: "sw2", label: "Trunk", kind: "trunk", labelDx: 28 },
+        { from: "core", to: "sw3", label: "Trunk", kind: "trunk" },
+        { from: "sw1", to: "pc1", label: "VLAN 10", kind: "access", labelDx: -18 },
+        { from: "sw1", to: "ap", label: "VLAN 30", kind: "access", labelDx: 18 },
+        { from: "sw2", to: "pc2", label: "VLAN 20", kind: "access", labelDx: 24 },
+        { from: "sw3", to: "pc3", label: "VLAN 20", kind: "access", labelDx: -18 },
+        { from: "sw3", to: "srv", label: "VLAN 100", kind: "access", labelDx: 18 }
+      ];
+
+      var nodes = NODES.map(function (node) {
+        return Object.assign({}, node, { homeX: node.x, homeY: node.y });
+      });
+      var nodeById = new Map();
+      var nodeElements = new Map();
+      var linkElements = [];
+      var selectedId = "core";
+
+      var zoom = 1;
+      var panX = 0;
+      var panY = 0;
+      var dragState = null;
+      var panState = null;
+
+      /* ---------- 主题 ---------- */
+      function syncThemeUI() {
+        var isDark = root.dataset.theme === "dark";
+        var label = isDark ? "切换到浅色模式" : "切换到深色模式";
+        themeToggle.setAttribute("aria-label", label);
+        themeToggle.setAttribute("title", label);
+        if (themeMeta) {
+          themeMeta.setAttribute("content", isDark ? "#0b0d12" : "#ffffff");
+        }
+      }
+
+      syncThemeUI();
+
+      themeToggle.addEventListener("click", function () {
+        var nextTheme = root.dataset.theme === "dark" ? "light" : "dark";
+        root.dataset.theme = nextTheme;
+        syncThemeUI();
+        try {
+          localStorage.setItem("theme", nextTheme);
+        } catch (error) {}
+      });
+
+      /* ---------- 基础工具 ---------- */
+      function clamp(value, min, max) {
+        return Math.min(Math.max(value, min), max);
+      }
+
+      function svgElement(tag, attributes) {
+        var element = document.createElementNS(SVG_NS, tag);
+        Object.keys(attributes).forEach(function (key) {
+          element.setAttribute(key, attributes[key]);
+        });
+        return element;
+      }
+
+      function clientToContent(clientX, clientY) {
+        var point = svg.createSVGPoint();
+        point.x = clientX;
+        point.y = clientY;
+        return point.matrixTransform(viewport.getScreenCTM().inverse());
+      }
+
+      function getLinkGeometry(from, to) {
+        var midX = (from.x + to.x) / 2;
+        var midY = (from.y + to.y) / 2;
+        var d;
+
+        if (Math.abs(to.x - from.x) < 40) {
+          d = "M " + from.x + " " + from.y + " L " + to.x + " " + to.y;
+        } else {
+          d = "M " + from.x + " " + from.y +
+              " C " + from.x + " " + midY + ", " +
+              to.x + " " + midY + ", " +
+              to.x + " " + to.y;
+        }
+
+        return { d: d, midX: midX, midY: midY };
+      }
+
+      /* ---------- 布局保存 ---------- */
+      function restoreLayout() {
+        try {
+          var saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+          if (!saved || typeof saved !== "object") {
+            return;
+          }
+          nodes.forEach(function (node) {
+            var position = saved[node.id];
+            if (position &&
+                Number.isFinite(position.x) &&
+                Number.isFinite(position.y)) {
+              node.x = clamp(position.x, 60, 940);
+              node.y = clamp(position.y, 55, 655);
+            }
+          });
+        } catch (error) {}
+      }
+
+      function saveLayout() {
+        var payload = {};
+        nodes.forEach(function (node) {
+          payload[node.id] = {
+            x: Math.round(node.x),
+            y: Math.round(node.y)
+          };
+        });
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+        } catch (error) {}
+      }
+
+      /* ---------- 视图 ---------- */
+      function applyView() {
+        viewport.setAttribute(
+          "transform",
+          "translate(" + panX.toFixed(2) + " " + panY.toFixed(2) + ") scale(" + zoom.toFixed(3) + ")"
+        );
+        zoomLevel.textContent = Math.round(zoom * 100) + "%";
+        zoomOutButton.disabled = zoom <= MIN_ZOOM + 0.001;
+        zoomInButton.disabled = zoom >= MAX_ZOOM - 0.001;
+      }
+
+      function setZoom(nextZoom) {
+        var target = clamp(nextZoom, MIN_ZOOM, MAX_ZOOM);
+        if (Math.abs(target - zoom) < 0.001) {
+          return;
+        }
+
+        var centerX = 500;
+        var centerY = 360;
+        var contentX = (centerX - panX) / zoom;
+        var contentY = (centerY - panY) / zoom;
+
+        zoom = target;
+        panX = centerX - contentX * zoom;
+        panY = centerY - contentY * zoom;
+        applyView();
+      }
+
+      function resetView() {
+        zoom = 1;
+        panX = 0;
+        panY = 0;
+        applyView();
+      }
+
+      /* ---------- 渲染链路 ---------- */
+      function renderLinks() {
+        linkLayer.replaceChildren();
+        linkLabelLayer.replaceChildren();
+        linkElements = [];
+
+        LINKS.forEach(function (link) {
+          var from = nodeById.get(link.from);
+          var to = nodeById.get(link.to);
+          if (!from || !to) {
+            return;
+          }
+
+          var geometry = getLinkGeometry(from, to);
+          var path = svgElement("path", {
+            d: geometry.d,
+            class: "link link--" + (link.kind || "access"),
+            "data-from": link.from,
+            "data-to": link.to
+          });
+          linkLayer.appendChild(path);
+
+          var label = null;
+          if (link.label) {
+            label = svgElement("text", {
+              x: geometry.midX + (link.labelDx || 0),
+              y: geometry.midY + (link.labelDy || 0),
+              class: "link-label"
+            });
+            label.textContent = link.label;
+            linkLabelLayer.appendChild(label);
+          }
+
+          linkElements.push({
+            link: link,
+            path: path,
+            label: label
+          });
+        });
+      }
+
+      function updateLinks() {
+        linkElements.forEach(function (item) {
+          var from = nodeById.get(item.link.from);
+          var to = nodeById.get(item.link.to);
+          if (!from || !to) {
+            return;
+          }
+          var geometry = getLinkGeometry(from, to);
+          item.path.setAttribute("d", geometry.d);
+          if (item.label) {
+            item.label.setAttribute("x", geometry.midX + (item.link.labelDx || 0));
+            item.label.setAttribute("y", geometry.midY + (item.link.labelDy || 0));
+          }
+        });
+      }
+
+      /* ---------- 渲染节点 ---------- */
+      function renderNodes() {
+        nodeLayer.replaceChildren();
+        nodeElements.clear();
+
+        nodes.forEach(function (node) {
+          var meta = TYPE_META[node.type];
+          var group = svgElement("g", {
+            class: "node node--" + node.type,
+            transform: "translate(" + node.x + " " + node.y + ")",
+            tabindex: "0",
+            role: "button",
+            "aria-label": node.label + "，" + meta.name + "，点击查看详情",
+            "aria-pressed": "false"
+          });
+
+          var halo = svgElement("circle", {
+            class: "node-halo",
+            r: "36"
+          });
+
+          var core = svgElement("circle", {
+            class: "node-core",
+            r: "28"
+          });
+          core.style.setProperty("--node-color", meta.color);
+
+          var icon = svgElement("use", {
+            href: "#icon-" + node.type,
+            x: "-12",
+            y: "-12",
+            width: "24",
+            height: "24",
+            class: "node-icon"
+          });
+
+          var status = svgElement("circle", {
+            class: "node-status",
+            cx: "22",
+            cy: "-22",
+            r: "5"
+          });
+
+          var label = svgElement("text", {
+            class: "node-label",
+            y: "55",
+            "text-anchor": "middle"
+          });
+          label.textContent = node.label;
+
+          group.appendChild(halo);
+          group.appendChild(core);
+          group.appendChild(icon);
+          group.appendChild(status);
+          group.appendChild(label);
+
+          group.addEventListener("pointerdown", function (event) {
+            startNodeDrag(event, node, group);
+          });
+
+          group.addEventListener("keydown", function (event) {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              selectNode(node.id);
+            }
+          });
+
+          nodeLayer.appendChild(group);
+          nodeElements.set(node.id, group);
+        });
+      }
+
+      function updateNodePosition(node) {
+        var element = nodeElements.get(node.id);
+        if (element) {
+          element.setAttribute("transform", "translate(" + node.x + " " + node.y + ")");
+        }
+      }
+
+      /* ---------- 选择与详情 ---------- */
+      function getNeighborIds(id) {
+        var neighbors = [];
+        LINKS.forEach(function (link) {
+          if (link.from === id) {
+            neighbors.push(link.to);
+          } else if (link.to === id) {
+            neighbors.push(link.from);
+          }
+        });
+        return neighbors;
+      }
+
+      function renderDetails(node) {
+        var meta = TYPE_META[node.type];
+        var neighbors = getNeighborIds(node.id);
+
+        detailName.textContent = node.label;
+        detailType.textContent = meta.name;
+        detailType.style.color = meta.color;
+        detailDesc.textContent = node.desc;
+        detailIp.textContent = node.ip;
+        detailRole.textContent = node.role;
+        detailVlan.textContent = node.vlan;
+        detailUplink.textContent = node.uplink;
+        detailIcon.style.setProperty("--type-color", meta.color);
+        detailIconUse.setAttribute("href", "#icon-" + node.type);
+
+        connectionList.replaceChildren();
+        neighbors.forEach(function (neighborId) {
+          var neighbor = nodeById.get(neighborId);
+          if (!neighbor) {
+            return;
+          }
+
+          var button = document.createElement("button");
+          button.type = "button";
+          button.className = "connection-chip";
+          button.dataset.nodeId = neighbor.id;
+          button.setAttribute("aria-label", "查看 " + neighbor.label + " 的详情");
+
+          var dot = document.createElement("span");
+          dot.className = "connection-dot";
+          dot.style.background = TYPE_META[neighbor.type].color;
+          dot.setAttribute("aria-hidden", "true");
+
+          var label = document.createElement("span");
+          label.textContent = neighbor.label;
+
+          button.appendChild(dot);
+          button.appendChild(label);
+          connectionList.appendChild(button);
+        });
+      }
+
+      function selectNode(id) {
+        var selected = nodeById.get(id);
+        if (!selected) {
+          return;
+        }
+
+        selectedId = id;
+        var neighbors = getNeighborIds(id);
+
+        nodeElements.forEach(function (element, nodeId) {
+          var isSelected = nodeId === id;
+          var isNeighbor = neighbors.indexOf(nodeId) !== -1;
+          element.classList.toggle("is-selected", isSelected);
+          element.classList.toggle("is-neighbor", isNeighbor);
+          element.setAttribute("aria-pressed", String(isSelected));
+        });
+
+        linkElements.forEach(function (item) {
+          var connected = item.link.from === id || item.link.to === id;
+          item.path.classList.toggle("is-connected", connected);
+          if (item.label) {
+            item.label.classList.toggle("is-connected", connected);
+          }
+        });
+
+        renderDetails(selected);
+      }
+
+      connectionList.addEventListener("click", function (event) {
+        var button = event.target.closest("[data-node-id]");
+        if (!button) {
+          return;
+        }
+        selectNode(button.dataset.nodeId);
+      });
+
+      /* ---------- 拖动与平移 ---------- */
+      function startNodeDrag(event, node, group) {
+        if (event.button !== 0 || !event.isPrimary) {
+          return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+        group.focus({ preventScroll: true });
+
+        var point = clientToContent(event.clientX, event.clientY);
+        dragState = {
+          node: node,
+          group: group,
+          pointerId: event.pointerId,
+          offsetX: point.x - node.x,
+          offsetY: point.y - node.y,
+          startX: event.clientX,
+          startY: event.clientY,
+          moved: false
+        };
+
+        group.classList.add("is-dragging");
+        try {
+          svg.setPointerCapture(event.pointerId);
+        } catch (error) {}
+      }
+
+      function handleNodeDrag(event) {
+        if (!dragState || dragState.pointerId !== event.pointerId) {
+          return;
+        }
+
+        event.preventDefault();
+
+        if (Math.abs(event.clientX - dragState.startX) > 3 ||
+            Math.abs(event.clientY - dragState.startY) > 3) {
+          dragState.moved = true;
+        }
+
+        var point = clientToContent(event.clientX, event.clientY);
+        dragState.node.x = clamp(point.x - dragState.offsetX, 60, 940);
+        dragState.node.y = clamp(point.y - dragState.offsetY, 55, 655);
+
+        updateNodePosition(dragState.node);
+        updateLinks();
+      }
+
+      function endNodeDrag(event) {
+        if (!dragState || dragState.pointerId !== event.pointerId) {
+          return;
+        }
+
+        var nodeId = dragState.node.id;
+        var moved = dragState.moved;
+        dragState.group.classList.remove("is-dragging");
+        try {
+          svg.releasePointerCapture(event.pointerId);
+        } catch (error) {}
+
+        dragState = null;
+
+        if (moved) {
+          saveLayout();
+        } else {
+          selectNode(nodeId);
+        }
+      }
+
+      svg.addEventListener("pointerdown", function (event) {
+        if (event.pointerType === "touch" ||
+            event.button !== 0 ||
+            event.target.closest(".node")) {
+          return;
+        }
+
+        panState = {
+          pointerId: event.pointerId,
+          startX: event.clientX,
+          startY: event.clientY,
+          panX: panX,
+          panY: panY
+        };
+        svg.classList.add("is-panning");
+        try {
+          svg.setPointerCapture(event.pointerId);
+        } catch (error) {}
+      });
+
+      svg.addEventListener("pointermove", function (event) {
+        if (dragState) {
+          handleNodeDrag(event);
+          return;
+        }
+
+        if (!panState || panState.pointerId !== event.pointerId) {
+          return;
+        }
+
+        var rect = svg.getBoundingClientRect();
+        var scaleX = 1000 / rect.width;
+        var scaleY = 720 / rect.height;
+        panX = panState.panX + (event.clientX - panState.startX) * scaleX;
+        panY = panState.panY + (event.clientY - panState.startY) * scaleY;
+        applyView();
+      });
+
+      function endPointerInteraction(event) {
+        if (dragState) {
+          endNodeDrag(event);
+          return;
+        }
+
+        if (panState && panState.pointerId === event.pointerId) {
+          panState = null;
+          svg.classList.remove("is-panning");
+          try {
+            svg.releasePointerCapture(event.pointerId);
+          } catch (error) {}
+        }
+      }
+
+      svg.addEventListener("pointerup", endPointerInteraction);
+      svg.addEventListener("pointercancel", endPointerInteraction);
+
+      /* ---------- 控件 ---------- */
+      zoomInButton.addEventListener("click", function () {
+        setZoom(zoom + ZOOM_STEP);
+      });
+
+      zoomOutButton.addEventListener("click", function () {
+        setZoom(zoom - ZOOM_STEP);
+      });
+
+      resetViewButton.addEventListener("click", resetView);
+
+      resetLayoutButton.addEventListener("click", function () {
+        nodes.forEach(function (node) {
+          node.x = node.homeX;
+          node.y = node.homeY;
+          updateNodePosition(node);
+        });
+        updateLinks();
+        try {
+          localStorage.removeItem(STORAGE_KEY);
+        } catch (error) {}
+        resetView();
+        selectNode("core");
+      });
+
+      /* ---------- 图例与初始化 ---------- */
+      function renderLegend() {
+        var seen = {};
+        nodes.forEach(function (node) {
+          if (seen[node.type]) {
+            return;
+          }
+          seen[node.type] = true;
+          var meta = TYPE_META[node.type];
+          var item = document.createElement("span");
+          item.className = "legend-item";
+
+          var dot = document.createElement("span");
+          dot.className = "legend-dot";
+          dot.style.background = meta.color;
+          dot.setAttribute("aria-hidden", "true");
+
+          var text = document.createElement("span");
+          text.textContent = meta.name;
+
+          item.appendChild(dot);
+          item.appendChild(text);
+          legend.appendChild(item);
+        });
+      }
+
+      function centerMobileCanvas() {
+        if (canvasWrap.scrollWidth > canvasWrap.clientWidth) {
+          canvasWrap.scrollLeft = (canvasWrap.scrollWidth - canvasWrap.clientWidth) / 2;
+        }
+      }
+
+      function init() {
+        nodes.forEach(function (node) {
+          nodeById.set(node.id, node);
+        });
+
+        restoreLayout();
+        renderLinks();
+        renderNodes();
+        renderLegend();
+        applyView();
+        selectNode(selectedId);
+        stageMeta.textContent = nodes.length + " 个节点 · " + LINKS.length + " 条链路";
+
+        window.requestAnimationFrame(centerMobileCanvas);
+
+        var year = document.getElementById("year");
+        if (year) {
+          year.textContent = String(new Date().getFullYear());
+        }
+      }
+
+      init();
+    })();
+  </script>
+</body>
+</html>
